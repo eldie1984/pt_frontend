@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useAuth } from "@/hooks/use-auth"
 import { getInstruments, getInstrumentBySymbol, getExchanges, createInstrument, createTransaction, getTransactions, getPortfolios, getBrokers, type Exchange, type Portfolio, type Broker } from "@/lib/api/instruments"
 
@@ -89,278 +89,6 @@ function holdingToInstrument(h: HoldingFromAPI): Instrument {
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
-
-// ──────────────────────────────────────────────────────────────────────────────
-// Date helpers
-// ──────────────────────────────────────────────────────────────────────────────
-
-const MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-]
-const WEEKDAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"]
-
-function toISODate(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, "0")
-  const day = String(d.getDate()).padStart(2, "0")
-  return `${y}-${m}-${day}`
-}
-
-function fromISODate(iso: string): Date {
-  // Treat ISO date as local-noon to avoid timezone roll-back
-  const [y, m, d] = iso.split("-").map(Number)
-  return new Date(y, (m || 1) - 1, d || 1, 12, 0, 0, 0)
-}
-
-function isSameDay(a: Date, b: Date): boolean {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
-}
-
-function formatDisplayDate(iso: string): string {
-  if (!iso) return ""
-  const d = fromISODate(iso)
-  return `${MONTH_NAMES[d.getMonth()].slice(0, 3)} ${d.getDate()}, ${d.getFullYear()}`
-}
-
-// ──────────────────────────────────────────────────────────────────────────────
-// Calendar (custom, styled with project CSS variables)
-// ──────────────────────────────────────────────────────────────────────────────
-
-interface CalendarProps {
-  value: string // ISO yyyy-mm-dd
-  onChange: (iso: string) => void
-  maxDate?: Date | null // disallow dates after this; null = no cap
-  accentClass?: string // "var(--green)" or "var(--red)" etc.
-}
-
-function Calendar({ value, onChange, maxDate, accentClass = "var(--accent)" }: CalendarProps) {
-  const today = new Date()
-  const cap = maxDate === null ? null : maxDate ?? today
-  const selected = value ? fromISODate(value) : today
-  const [viewYear, setViewYear] = useState(selected.getFullYear())
-  const [viewMonth, setViewMonth] = useState(selected.getMonth())
-
-  // Keep view in sync when value changes externally
-  useEffect(() => {
-    if (value) {
-      const d = fromISODate(value)
-      setViewYear(d.getFullYear())
-      setViewMonth(d.getMonth())
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value])
-
-  const firstOfMonth = new Date(viewYear, viewMonth, 1)
-  const startOffset = firstOfMonth.getDay() // 0 = Sun
-  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate()
-  const daysInPrevMonth = new Date(viewYear, viewMonth, 0).getDate()
-
-  const cells: { date: Date; inMonth: boolean }[] = []
-  for (let i = startOffset - 1; i >= 0; i--) {
-    cells.push({ date: new Date(viewYear, viewMonth - 1, daysInPrevMonth - i), inMonth: false })
-  }
-  for (let d = 1; d <= daysInMonth; d++) {
-    cells.push({ date: new Date(viewYear, viewMonth, d), inMonth: true })
-  }
-  while (cells.length % 7 !== 0 || cells.length < 42) {
-    const next = cells.length - (startOffset + daysInMonth) + 1
-    cells.push({ date: new Date(viewYear, viewMonth + 1, next), inMonth: false })
-    if (cells.length >= 42) break
-  }
-
-  const goPrev = () => {
-    if (viewMonth === 0) {
-      setViewYear((y) => y - 1)
-      setViewMonth(11)
-    } else {
-      setViewMonth((m) => m - 1)
-    }
-  }
-  const goNext = () => {
-    if (viewMonth === 11) {
-      setViewYear((y) => y + 1)
-      setViewMonth(0)
-    } else {
-      setViewMonth((m) => m + 1)
-    }
-  }
-
-  const isFuture = (d: Date) => {
-    if (cap === null) return false
-    return d.setHours(0, 0, 0, 0) > new Date(cap.getFullYear(), cap.getMonth(), cap.getDate()).getTime()
-  }
-
-  return (
-    <div className="bg-[var(--bg-input)] border border-[var(--border-2)] rounded-[var(--radius)] p-3 shadow-[var(--shadow-lg)]">
-      {/* Month header */}
-      <div className="flex items-center justify-between mb-3">
-        <button
-          type="button"
-          onClick={goPrev}
-          className="w-7 h-7 rounded bg-[var(--bg-muted)] text-[var(--text-2)] flex items-center justify-center cursor-pointer hover:text-[var(--text-1)] hover:bg-[var(--bg-hover)] transition-colors duration-[var(--trans)]"
-          aria-label="Previous month"
-        >
-          ‹
-        </button>
-        <div className="font-heading text-sm font-bold text-[var(--text-1)] tracking-wide">
-          {MONTH_NAMES[viewMonth]} {viewYear}
-        </div>
-        <button
-          type="button"
-          onClick={goNext}
-          className="w-7 h-7 rounded bg-[var(--bg-muted)] text-[var(--text-2)] flex items-center justify-center cursor-pointer hover:text-[var(--text-1)] hover:bg-[var(--bg-hover)] transition-colors duration-[var(--trans)]"
-          aria-label="Next month"
-        >
-          ›
-        </button>
-      </div>
-
-      {/* Weekday row */}
-      <div className="grid grid-cols-7 gap-1 mb-1">
-        {WEEKDAY_LABELS.map((w, i) => (
-          <div
-            key={i}
-            className="text-center font-mono text-[9px] tracking-[0.14em] uppercase text-[var(--text-3)] py-1"
-          >
-            {w}
-          </div>
-        ))}
-      </div>
-
-      {/* Day grid */}
-      <div className="grid grid-cols-7 gap-1">
-        {cells.map((cell, idx) => {
-          const iso = toISODate(cell.date)
-          const isSel = value && isSameDay(cell.date, fromISODate(value))
-          const isToday = isSameDay(cell.date, today)
-          const disabled = isFuture(new Date(cell.date))
-          return (
-            <button
-              key={idx}
-              type="button"
-              disabled={disabled}
-              onClick={() => onChange(iso)}
-              className={`h-8 rounded font-mono text-xs cursor-pointer transition-all duration-[var(--trans)] ${
-                isSel
-                  ? "text-white font-bold"
-                  : cell.inMonth
-                  ? disabled
-                    ? "text-[var(--text-3)] opacity-30 cursor-not-allowed"
-                    : "text-[var(--text-2)] hover:bg-[var(--bg-hover)]"
-                  : disabled
-                  ? "text-[var(--text-3)] opacity-20 cursor-not-allowed"
-                  : "text-[var(--text-3)] opacity-50 hover:bg-[var(--bg-hover)]"
-              } ${isToday && !isSel ? "ring-1 ring-inset" : ""}`}
-              style={{
-                background: isSel ? accentClass : undefined,
-                boxShadow: isToday && !isSel ? `inset 0 0 0 1px ${accentClass}` : undefined,
-              }}
-            >
-              {cell.date.getDate()}
-            </button>
-          )
-        })}
-      </div>
-
-      {/* Quick actions */}
-      <div className="flex gap-2 mt-3 pt-3 border-t border-[var(--border-1)]">
-        <button
-          type="button"
-          onClick={() => {
-            const t = new Date()
-            setViewYear(t.getFullYear())
-            setViewMonth(t.getMonth())
-            onChange(toISODate(t))
-          }}
-          className="flex-1 py-1.5 rounded font-mono text-[10px] tracking-[0.1em] uppercase bg-[var(--bg-muted)] text-[var(--text-2)] border border-[var(--border-1)] cursor-pointer hover:text-[var(--text-1)] hover:border-[var(--border-2)] transition-all duration-[var(--trans)]"
-        >
-          Today
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            const y = new Date()
-            y.setDate(y.getDate() - 1)
-            setViewYear(y.getFullYear())
-            setViewMonth(y.getMonth())
-            onChange(toISODate(y))
-          }}
-          className="flex-1 py-1.5 rounded font-mono text-[10px] tracking-[0.1em] uppercase bg-[var(--bg-muted)] text-[var(--text-2)] border border-[var(--border-1)] cursor-pointer hover:text-[var(--text-1)] hover:border-[var(--border-2)] transition-all duration-[var(--trans)]"
-        >
-          Yesterday
-        </button>
-      </div>
-    </div>
-  )
-}
-
-// ──────────────────────────────────────────────────────────────────────────────
-// Date picker field — text input that opens the Calendar in a popover
-// ──────────────────────────────────────────────────────────────────────────────
-
-interface DatePickerProps {
-  value: string
-  onChange: (iso: string) => void
-  accentClass?: string
-  label?: string
-  required?: boolean
-  allowFuture?: boolean
-  placeholder?: string
-}
-
-function DatePicker({ value, onChange, accentClass, label = "Transaction Date", required, allowFuture = false, placeholder = "Select date..." }: DatePickerProps) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
-    }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [open])
-
-  return (
-    <div className="relative" ref={ref}>
-      <label className="block font-mono text-[9px] tracking-[0.1em] uppercase text-[var(--text-3)] mb-1">
-        {label} {required ? "*" : ""}
-      </label>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="w-full bg-[var(--bg-input)] border border-[var(--border-2)] rounded-[var(--radius)] py-2 px-3 text-left text-[var(--text-1)] font-mono text-sm outline-none transition-all duration-[var(--trans)] hover:border-[var(--accent)] focus:border-[var(--accent)] cursor-pointer flex items-center justify-between"
-      >
-        <span className={value ? "text-[var(--text-1)]" : "text-[var(--text-3)]"}>
-          {value ? formatDisplayDate(value) : placeholder}
-        </span>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--text-3)]">
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-          <line x1="16" y1="2" x2="16" y2="6"></line>
-          <line x1="8" y1="2" x2="8" y2="6"></line>
-          <line x1="3" y1="10" x2="21" y2="10"></line>
-        </svg>
-      </button>
-
-      {open && (
-        <div className="absolute left-0 right-0 mt-1 z-[1100]">
-          <Calendar
-            value={value}
-            onChange={(iso) => {
-              onChange(iso)
-              setOpen(false)
-            }}
-            accentClass={accentClass}
-            maxDate={allowFuture ? null : undefined}
-          />
-        </div>
-      )}
-    </div>
-  )
-}
 
 export function InstrumentsScreen() {
   const { token } = useAuth()
@@ -500,8 +228,6 @@ export function InstrumentsScreen() {
     tariffs: "",
     portfolio: "",
     broker: "",
-    transactionDate: toISODate(new Date()),
-    liquidationDate: "",
   })
 
   const filteredInstruments = instruments.filter((i) => i.type === activeTab)
@@ -551,11 +277,6 @@ export function InstrumentsScreen() {
         throw new Error("Please select a portfolio for this transaction.")
       }
 
-      // Resolve transaction date — defaults to today if somehow missing
-      const txIso = formData.transactionDate
-        ? fromISODate(formData.transactionDate).toISOString()
-        : new Date().toISOString()
-
       // Create transaction
       const transactionResult = await createTransaction({
         portfolioId: formData.portfolio,
@@ -566,7 +287,7 @@ export function InstrumentsScreen() {
         brokerCommission: broker,
         exchangeCommission: market,
         transactionTariff: tariff,
-        transactionDate: txIso,
+        transactionDate: new Date().toISOString(),
         brokerId: formData.broker || undefined,
       }, token)
 
@@ -583,7 +304,7 @@ export function InstrumentsScreen() {
         marketCommission: market,
         tariffs: tariff,
         total: transactionResult.netAmount,
-        date: formData.transactionDate || new Date().toISOString().split("T")[0],
+        date: new Date().toISOString().split("T")[0],
       }
 
       setTransactions([newTransaction, ...transactions])
@@ -603,8 +324,6 @@ export function InstrumentsScreen() {
         tariffs: "",
         portfolio: "",
         broker: "",
-        transactionDate: toISODate(new Date()),
-        liquidationDate: "",
       })
     } catch (error) {
       console.error('Transaction failed:', error)
@@ -623,8 +342,6 @@ export function InstrumentsScreen() {
         name: instrument.name,
         market: instrument.market,
         price: instrument.currentPrice.toString(),
-        transactionDate: toISODate(new Date()),
-        liquidationDate: "",
       })
     } else {
       setFormData({
@@ -638,8 +355,6 @@ export function InstrumentsScreen() {
         tariffs: "",
         portfolio: "",
         broker: "",
-        transactionDate: toISODate(new Date()),
-        liquidationDate: "",
       })
     }
     setShowTransactionModal(true)
@@ -847,7 +562,7 @@ export function InstrumentsScreen() {
       {/* Transaction Modal */}
       {showTransactionModal && (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-[var(--bg-panel)] border border-[var(--border-2)] rounded-[var(--radius-lg)] w-full max-w-md p-6 shadow-[var(--shadow-lg)] max-h-[90vh] overflow-y-auto">
+          <div className="bg-[var(--bg-panel)] border border-[var(--border-2)] rounded-[var(--radius-lg)] w-full max-w-md p-6 shadow-[var(--shadow-lg)]">
             <div className="flex items-center justify-between mb-5">
               <h3 className="font-heading text-xl font-bold text-[var(--text-1)]">
                 {transactionType === "buy" ? "Buy" : "Sell"} {INSTRUMENT_LABELS[activeTab]}
@@ -946,25 +661,6 @@ export function InstrumentsScreen() {
                 </select>
               </div>
 
-              {/* Transaction Date + Liquidation Date — calendar pickers */}
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <DatePicker
-                  value={formData.transactionDate}
-                  onChange={(iso) => setFormData({ ...formData, transactionDate: iso })}
-                  accentClass={transactionType === "buy" ? "var(--green)" : "var(--red)"}
-                  label="Transaction Date"
-                  required
-                />
-                <DatePicker
-                  value={formData.liquidationDate}
-                  onChange={(iso) => setFormData({ ...formData, liquidationDate: iso })}
-                  accentClass={transactionType === "buy" ? "var(--green)" : "var(--red)"}
-                  label="Liquidation Date"
-                  allowFuture
-                  placeholder="Optional — pick date"
-                />
-              </div>
-
               <div className="grid grid-cols-2 gap-3 mb-4">
                 <div>
                   <label className="block font-mono text-[9px] tracking-[0.1em] uppercase text-[var(--text-3)] mb-1">
@@ -1060,20 +756,6 @@ export function InstrumentsScreen() {
                     ${((parseFloat(formData.brokerCommission) || 0) + (parseFloat(formData.marketCommission) || 0) + (parseFloat(formData.tariffs) || 0)).toFixed(2)}
                   </span>
                 </div>
-                <div className="flex justify-between font-mono text-xs mb-1">
-                  <span className="text-[var(--text-3)]">Date</span>
-                  <span className="text-[var(--text-2)]">
-                    {formData.transactionDate ? formatDisplayDate(formData.transactionDate) : "—"}
-                  </span>
-                </div>
-                {formData.liquidationDate && (
-                  <div className="flex justify-between font-mono text-xs mb-1">
-                    <span className="text-[var(--text-3)]">Liquidation</span>
-                    <span className="text-[var(--text-2)]">
-                      {formatDisplayDate(formData.liquidationDate)}
-                    </span>
-                  </div>
-                )}
                 <div className="flex justify-between font-mono text-sm font-bold pt-1 border-t border-[var(--border-1)]">
                   <span className="text-[var(--text-1)]">Total</span>
                   <span className={transactionType === "buy" ? "text-[var(--green)]" : "text-[var(--red)]"}>

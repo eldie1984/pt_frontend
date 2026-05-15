@@ -632,7 +632,7 @@ externalRequire.resolve = (id, options)=>{
     return require.resolve(id, options);
 };
 contextPrototype.x = externalRequire;
-/* eslint-disable @typescript-eslint/no-unused-vars */ const path = require('path');
+  const path = require('path');
 const relativePathToRuntimeRoot = path.relative(RUNTIME_PUBLIC_PATH, '.');
 // Compute the relative path to the `distDir`.
 const relativePathToDistRoot = path.join(relativePathToRuntimeRoot, RELATIVE_ROOT_PATH);
@@ -653,7 +653,7 @@ const ABSOLUTE_ROOT = path.resolve(__filename, relativePathToDistRoot);
     return ABSOLUTE_ROOT;
 }
 Context.prototype.P = resolveAbsolutePath;
-/* eslint-disable @typescript-eslint/no-unused-vars */ /// <reference path="../shared/runtime/runtime-utils.ts" />
+  /// <reference path="../shared/runtime/runtime-utils.ts" />
 function readWebAssemblyAsResponse(path) {
     const { createReadStream } = require('fs');
     const { Readable } = require('stream');
@@ -861,7 +861,7 @@ class UpdateApplyError extends Error {
 /**
  * Records parent-child relationship when a module imports another.
  * Should be called during module instantiation.
- */ // eslint-disable-next-line @typescript-eslint/no-unused-vars
+ */  
 function trackModuleImport(parentModule, childModuleId, childModule) {
     // Record that parent imports child
     if (parentModule.children.indexOf(childModuleId) === -1) {
@@ -1244,7 +1244,7 @@ function formatDependencyChain(dependencyChain) {
         outdatedModuleParents
     };
 }
-/* eslint-disable @typescript-eslint/no-unused-vars */ /**
+  /**
  * Shared module instantiation logic.
  * This handles the full module instantiation flow for both browser and Node.js.
  * Only React Refresh hooks differ between platforms (passed as callback).
@@ -1601,7 +1601,7 @@ module.exports = (sourcePath)=>({
     });
 /// <reference path="../../shared/runtime/dev-protocol.d.ts" />
 /// <reference path="../../shared/runtime/hmr-runtime.ts" />
-/* eslint-disable @typescript-eslint/no-unused-vars */ /**
+  /**
  * Appends the module code with //# sourceURL and //# sourceMappingURL so
  * that Node.js can resolve stack frames from `eval`ed server HMR modules back to
  * their original source files. Mirrors the browser's _eval in dev-backend-dom.ts.
@@ -1659,7 +1659,7 @@ function initializeServerHmr(moduleFactories, devModuleCache) {
     try {
         const { entries = {}, chunks = {} } = instruction;
         const evalModuleEntry = (entry)=>{
-            // eslint-disable-next-line no-eval
+             
             return (0, eval)(entry.map ? inlineSourcemaps(entry) : entry.code);
         };
         const { added, modified } = computeChangedModules(entries, chunks, undefined // no chunkModulesMap for Node.js

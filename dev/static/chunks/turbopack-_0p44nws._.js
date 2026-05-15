@@ -877,7 +877,7 @@ class UpdateApplyError extends Error {
 /**
  * Records parent-child relationship when a module imports another.
  * Should be called during module instantiation.
- */ // eslint-disable-next-line @typescript-eslint/no-unused-vars
+ */  
 function trackModuleImport(parentModule, childModuleId, childModule) {
     // Record that parent imports child
     if (parentModule.children.indexOf(childModuleId) === -1) {
@@ -1260,7 +1260,7 @@ function formatDependencyChain(dependencyChain) {
         outdatedModuleParents
     };
 }
-/* eslint-disable @typescript-eslint/no-unused-vars */ /**
+  /**
  * Shared module instantiation logic.
  * This handles the full module instantiation flow for both browser and Node.js.
  * Only React Refresh hooks differ between platforms (passed as callback).
@@ -2122,7 +2122,7 @@ let BACKEND;
  * ECMAScript DOM runtime.
  *
  * It will be appended to the base development runtime code.
- */ /* eslint-disable @typescript-eslint/no-unused-vars */ /// <reference path="../base/runtime-base.ts" />
+ */   /// <reference path="../base/runtime-base.ts" />
 /// <reference path="../base/dev-base.ts" />
 /// <reference path="./runtime-backend-dom.ts" />
 /// <reference path="../../../shared/require-type.d.ts" />
@@ -2221,7 +2221,7 @@ function _eval({ code, url, map }) {
         // See https://stackoverflow.com/a/26603875
         unescape(encodeURIComponent(map)))}`;
     }
-    // eslint-disable-next-line no-eval
+     
     return eval(code);
 }
 const chunksToRegister = globalThis["TURBOPACK"];

@@ -3,14 +3,20 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { authAPI, User } from '../lib/auth';
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
 interface AuthContextType {
   user: User | null;
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, firstName?: string, lastName?: string) => Promise<void>;
+  register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
+  // Refreshes the access token against the server. Returns the new token on
+  // success (and syncs user state); returns null and clears auth state on
+  // failure so callers can redirect to /login.
+  refreshToken: () => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -59,10 +65,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (email: string, password: string, firstName?: string, lastName?: string) => {
+  const register = async (username: string, email: string, password: string) => {
     setIsLoading(true);
     try {
-      const response = await authAPI.register(email, password, firstName, lastName);
+      const response = await authAPI.register(username, email, password);
       const { user: userData, token: userToken } = response.data;
       
       setUser(userData);
@@ -79,6 +85,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('auth_token');
   };
 
+  const refreshToken = async (): Promise<string | null> => {
+    const current = token ?? localStorage.getItem('auth_token');
+    if (!current) {
+      logout();
+      return null;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${current}`,
+        },
+      });
+      if (!res.ok) {
+        logout();
+        return null;
+      }
+      const data: { token?: string; access_token?: string; user?: User } = await res.json();
+      const newToken = data.token ?? data.access_token ?? null;
+      if (!newToken) {
+        logout();
+        return null;
+      }
+      setToken(newToken);
+      if (data.user) setUser(data.user);
+      localStorage.setItem('auth_token', newToken);
+      return newToken;
+    } catch {
+      logout();
+      return null;
+    }
+  };
+
   const value: AuthContextType = {
     user,
     token,
@@ -87,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     register,
     logout,
+    refreshToken,
   };
 
   return (

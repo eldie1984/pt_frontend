@@ -11,8 +11,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
   const [activeTab, setActiveTab] = useState<"signin" | "create">("signin")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [firstName, setFirstName] = useState("")
-  const [lastName, setLastName] = useState("")
+  const [username, setUsername] = useState("")
   const [error, setError] = useState("")
   
   const { login, register, isLoading } = useAuth()
@@ -25,7 +24,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
       if (activeTab === "signin") {
         await login(email, password)
       } else {
-        await register(email, password, firstName, lastName)
+        await register(username, email, password)
       }
       
       if (onLogin) {
@@ -87,26 +86,13 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
             <>
               <div className="mb-3.5">
                 <label className="block font-mono text-[9px] tracking-[0.1em] uppercase text-[var(--text-2)] mb-1.5">
-                  First Name
+                  Username
                 </label>
                 <input
                   type="text"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  placeholder="Enter your first name"
-                  className="w-full bg-[var(--bg-input)] border border-[var(--border-2)] rounded-[var(--radius)] py-[11px] px-[13px] text-[var(--text-1)] font-sans text-sm outline-none transition-all duration-[var(--trans)] placeholder:text-[var(--text-3)] focus:border-[var(--accent)] focus:shadow-[0_0_0_2px_var(--accent-glow2)]"
-                />
-              </div>
-
-              <div className="mb-3.5">
-                <label className="block font-mono text-[9px] tracking-[0.1em] uppercase text-[var(--text-2)] mb-1.5">
-                  Last Name
-                </label>
-                <input
-                  type="text"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  placeholder="Enter your last name"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Enter your username"
                   className="w-full bg-[var(--bg-input)] border border-[var(--border-2)] rounded-[var(--radius)] py-[11px] px-[13px] text-[var(--text-1)] font-sans text-sm outline-none transition-all duration-[var(--trans)] placeholder:text-[var(--text-3)] focus:border-[var(--accent)] focus:shadow-[0_0_0_2px_var(--accent-glow2)]"
                 />
               </div>

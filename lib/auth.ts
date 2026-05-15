@@ -28,17 +28,16 @@ class AuthAPI {
     this.baseURL = `${API_BASE_URL}/api/auth`;
   }
 
-  async register(email: string, password: string, firstName?: string, lastName?: string): Promise<AuthResponse> {
+  async register(username: string, email: string, password: string): Promise<AuthResponse> {
     const response = await fetch(`${this.baseURL}/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
+        username,
         email,
         password,
-        firstName: firstName || '',
-        lastName: lastName || ''
       }),
     });
 

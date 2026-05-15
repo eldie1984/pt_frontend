@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from 'next'
 import { DM_Sans, Space_Mono, Rajdhani } from 'next/font/google'
-import { Analytics } from '@vercel/analytics/next'
 import { ThemeProvider } from '@/components/theme-provider'
 import './globals.css'
 
@@ -44,7 +43,7 @@ export default function RootLayout({
         <ThemeProvider defaultTheme="dark" attribute="class">
           {children}
         </ThemeProvider>
-        {process.env.NODE_ENV === 'production' && <Analytics />}
+        {process.env.NODE_ENV === 'production' && null}
       </body>
     </html>
   )

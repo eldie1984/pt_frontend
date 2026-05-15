@@ -13,19 +13,20 @@ export interface Exchange {
 }
 
 export interface Instrument {
-  id: number
+  id: string
   symbol: string
   name: string
   type: string
   exchange: string
+  exchange_id: string
   currency: string
   created_at: string
   updated_at: string
 }
 
 export interface TransactionRequest {
-  portfolioId: number
-  instrumentId: number
+  portfolioId: string
+  instrumentId: string
   type: 'buy' | 'sell'
   quantity: number
   price: number
@@ -33,14 +34,15 @@ export interface TransactionRequest {
   exchangeCommission?: number
   transactionTariff?: number
   transactionDate?: string
+  brokerId?: string
   notes?: string
 }
 
 export interface TransactionResponse {
   transaction: {
     id: number
-    portfolio_id: number
-    instrument_id: number
+    portfolio_id: string
+    instrument_id: string
     type: string
     quantity: number
     price: number
@@ -176,7 +178,7 @@ export async function createTransaction(
 }
 
 export async function getTransactions(
-  portfolioId: number,
+  portfolioId: string,
   token: string
 ): Promise<any[]> {
   const response = await fetch(`${API_BASE}/transactions/portfolio/${portfolioId}`, {
@@ -188,6 +190,117 @@ export async function getTransactions(
 
   if (!response.ok) {
     throw new Error('Failed to fetch transactions')
+  }
+
+  return response.json()
+}
+
+// Portfolio API functions
+export interface PortfolioCreate {
+  name: string
+  description?: string
+  broker_id?: string
+  initial_balance?: number
+  currency?: string
+}
+
+export interface Portfolio {
+  id: string
+  name: string
+  description?: string
+  broker_id?: string
+  initial_balance?: number
+  current_balance?: number
+  currency?: string
+  user_id: string
+  created_at: string
+  updated_at: string
+}
+
+export interface Broker {
+  id: string
+  name: string
+  type: 'stock' | 'crypto' | 'forex' | 'commodity'
+  commission_rate: number
+  is_active: boolean
+  website?: string
+  api_endpoint?: string
+  support_email?: string
+  created_at: string
+}
+
+export interface BrokerCreate {
+  name: string
+  type: 'stock' | 'crypto' | 'forex' | 'commodity'
+  commission_rate: number
+  is_active: boolean
+  website?: string
+  api_endpoint?: string
+  support_email?: string
+}
+
+export async function getPortfolios(token: string): Promise<Portfolio[]> {
+  const response = await fetch(`${API_BASE}/portfolio/list`, {
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+  })
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch portfolios')
+  }
+
+  return response.json()
+}
+
+export async function createPortfolio(portfolio: PortfolioCreate, token: string): Promise<Portfolio> {
+  const response = await fetch(`${API_BASE}/portfolio/new`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(portfolio),
+  })
+
+  if (!response.ok) {
+    throw new Error('Failed to create portfolio')
+  }
+
+  return response.json()
+}
+
+export async function getBrokers(token: string): Promise<Broker[]> {
+  const response = await fetch(`${API_BASE}/brokers`, {
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+  })
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch brokers')
+  }
+
+  return response.json()
+}
+
+export async function createBroker(
+  broker: Omit<Broker, 'id' | 'created_at'>,
+  token: string
+): Promise<Broker> {
+  const response = await fetch(`${API_BASE}/brokers`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(broker),
+  })
+
+  if (!response.ok) {
+    throw new Error('Failed to create broker')
   }
 
   return response.json()

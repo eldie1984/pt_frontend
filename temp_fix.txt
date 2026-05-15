@@ -1,0 +1,5 @@
+          <div className="p-[18px]">
+            <PortfolioManager onPortfolioAdded={(portfolio) => {
+              console.log("New portfolio added:", portfolio)
+            }} />
+          </div>
